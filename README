@@ -1,0 +1,106 @@
+# Automated Aggregate Introduction Rewriting for ASP Encodings
+
+## Overview
+ This README may be outdated. For more recent information, see AAgg_Technical_Report.pdf and AAgg_Rule_Semantics.pdf.
+ 
+ The aagg/ folder contains the software source code.
+ 
+ The tests/ folder contains tests for expected outputs of equivalence rewriting.
+ 
+ The docs/ folder contains some documentation files for describing aggregate equivalence, aggregate forms, and the software itself.
+ 
+ For full documentation, see AAgg_Technical_Report.pdf (currently in-progress).
+
+
+## SETUP
+ The Py-Clingo developers recommend using anaconda to setup the required environment. In addition, they restrict usage to python version 2.7.
+
+ With anaconda installed, run the following commands to create and activate the necessary environment for this application.
+
+     conda create -n python27clingo python=2.7
+
+ Confirm [y] any new packages that will be installed.
+
+     source activate python27clingo
+
+     conda install -c potassco clingo
+
+ Again confirm [y] any new packages that will be installed.
+
+
+## USAGE
+ Within the python27clingo environment created as in the setup above, run 'python aagg/main.py ENCODING(S)'.
+ 
+ Use 'python aagg/main.py --help' to view all the flags and options for running the program.
+ 
+ By default, the program will prompt the user to confirm or deny rewritings and use aggregate form (1) indicated in the '--help' message.
+
+
+## Notes on the automated aggregator
+ The 'clingo' package allows only python versions [>=2.7,<2.8.0a0]. As a result, this software can only be used with python2.7.
+ 
+ The general idea of the code is as follows:
+ 
+  1. For each rule, determine if the rule can be rewritten via equivalence
+  
+      This is accomplished (in the b=2 case; see AggregateFormSuite.pdf) by checking for a comparison operator for two variables.
+      
+      Then checking if those two variables occurs in identical functions, with only the two variables differing
+      
+  2. In the case of rewritability, replaces the rule with an aggregate in the form:
+         :- 2 { funct(V1,V2,...,VN,_) }, q(V1), q1(V2), ..., qN(VN).
+         
+         
+      Where funct is the function and V1...VN are other variables in the function,
+      
+       and q1...qN are functions bounding V1...VN,
+       
+       and the underscore is placed in place of the comparison variables' location
+       
+	   except in the case of that variable occurring elsewhere in the constraint,
+       
+	   then the variable is left in funct and the function where the variable 
+       
+	   occurred is placed as a conditional for the literal (see test4.lp)
+       
+      See test2.lp for a visual depiction of how it's designed to work.
+
+  The counting variable finder non-deterministically finds the largest set of comparisons in which there occurs a continuous chain of comparisons. In the less than (same as greater than reversed), there also cannot exist any cycle, for this makes no sense logically. In the not equal case, all variables in the set must have a not equal comparison with all other variables in the set. If there are multiple non-equal set candidates for rewriting, one will be chosen non-deterministically. This is irrelevant because in either set the rule won't get rewritten since there would then exist some atom in the rule in which a counting variable occurs that is not part of the counting literal or counting comparisons.
+
+  Considers comparisons of the form:
+
+     var1 {+,-} a {<,<=,>,>=,!=,=} var2 {+,-} b  
+
+   where a and b are (positive, zero, or negative) integers. One side of the comparison may also be of the form  a + var1  iff the operator is in fact addition. A (-1) is multiplied to the integer value if the corresponding {+,-} operator is {-}.
+
+   Let op be the operator used {<,<=,>,>=,!=,=} and c = (b-a)
+
+   The VariableCounter class adds the comparison to potential comparison variables iff:
+
+    op = {<,>}	c = 0,
+    
+	op = {!=}	c = 0
+    
+	op = {<=} 	c = -1,
+    
+	op = {>=}	c = 1,
+
+
+## Logical Assumptions
+ The rewritten program will not be used in conjunction with a rule containing a term using the name '[FUNCT]_project_[VAR]' for some auxilliary rewritten function name and corresponding rewrite variable name. Otherwise, strong equivalence is not preserved, only uniform equivalence.
+
+ Candidate rules do not have two different comparisons which both use the same two variables and cause conflicting notions (necessary for removing comparisons which are part of a rewritable component).  Ex:  Y < Y', Y < Y'-50.
+
+ Candidate rules do not use addition/subtraction in comparisons of variables which may be grounded to strings, as this constitutes logical nonsense
+ 
+
+## Known Bugs
+ Nested comparisons are mostly unrecognized.
+ 
+ Does not handle cases when two rewrites can be performed in a single rule (due to the longest_path_finder function returning only the first longest path it finds)
+ 
+ Does not handle cases when counting variables are expressed as tuples instead of variables.
+
+
+## LICENSE
+ LICENSING NEEDED.
